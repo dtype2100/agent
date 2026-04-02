@@ -26,8 +26,14 @@ async def chat(
 ):
     """에이전트와 대화한다. session_id를 전달하면 이전 대화 이력을 유지한다."""
     sid, agent = get_or_create_agent(body.session_id, session_store, settings, pipeline)
+    lock = session_store.get_lock(sid)
     try:
-        answer = await asyncio.to_thread(agent.chat, body.message)
+        def _run():
+            with lock:
+                ans = agent.chat(body.message)
+                return ans, len(agent.memory)
+
+        answer, message_count = await asyncio.to_thread(_run)
     except Exception:
         logger.exception("Agent chat failed")
         raise HTTPException(
@@ -35,7 +41,7 @@ async def chat(
             detail="에이전트(LLM) 호출에 실패했습니다.",
         ) from None
 
-    return ChatResponse(session_id=sid, answer=answer, message_count=len(agent.memory))
+    return ChatResponse(session_id=sid, answer=answer, message_count=message_count)
 
 
 @router.post("/chat/stream", summary="에이전트 채팅 (SSE)")
@@ -56,12 +62,14 @@ async def chat_stream(
         {"type": "error",       "message": str}
     """
     sid, agent = get_or_create_agent(body.session_id, session_store, settings, pipeline)
+    lock = session_store.get_lock(sid)
 
     def generate():
         yield f"data: {json.dumps({'type': 'session', 'session_id': sid}, ensure_ascii=False)}\n\n"
         try:
-            for event in agent.chat_stream(body.message):
-                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            with lock:
+                for event in agent.chat_stream(body.message):
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
@@ -73,7 +81,10 @@ def get_session(session_id: str, session_store: SessionStoreDep):
     agent = session_store.get(session_id)
     if agent is None:
         raise HTTPException(status_code=404, detail=f"세션을 찾을 수 없습니다: {session_id}")
-    return SessionInfo(session_id=session_id, message_count=len(agent.memory))
+    lock = session_store.get_lock(session_id)
+    with lock:
+        message_count = len(agent.memory)
+    return SessionInfo(session_id=session_id, message_count=message_count)
 
 
 @router.delete("/sessions/{session_id}", summary="세션 초기화")

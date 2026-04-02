@@ -46,9 +46,9 @@ async def query_stream(body: QueryRequest, pipeline: PipelineDep):
         {"type": "error",   "message": str}
     """
 
-    def generate():
+    async def generate():
         try:
-            result = pipeline.ask(body.query)
+            result = await asyncio.to_thread(pipeline.ask, body.query)
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
             return
