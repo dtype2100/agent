@@ -94,7 +94,9 @@ class ToolRegistry:
     """도구 목록을 관리하고 LLM에 바인딩하는 레지스트리."""
 
     def __init__(self):
-        self._tools = [calculator, web_search]
+        # web_search는 stub이므로 기본 도구에서 제외한다.
+        # 실제 검색 API를 연동한 뒤 self._tools.append(web_search)로 추가할 것.
+        self._tools = [calculator]
         self._retrieval_tool = None
 
     @property

@@ -70,8 +70,9 @@ async def chat_stream(
             with lock:
                 for event in agent.chat_stream(body.message):
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+        except Exception:
+            logger.exception("Agent chat stream failed")
+            yield f"data: {json.dumps({'type': 'error', 'message': '에이전트 처리 중 오류가 발생했습니다.'}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

@@ -24,7 +24,10 @@ class Agent:
         self._base_llm = build_llm(config)
         self.registry = registry or ToolRegistry()
         self._llm_with_tools = self.registry.bind_to_llm(self._base_llm)
-        self.memory = ConversationMemory(system_prompt=config.system_prompt)
+        self.memory = ConversationMemory(
+            system_prompt=config.system_prompt,
+            max_turns=config.max_memory_turns,
+        )
 
     def chat(self, user_message: str) -> str:
         """사용자 메시지를 받아 에이전트 응답을 반환한다.
@@ -78,10 +81,7 @@ class Agent:
 
                 if not response.tool_calls:
                     content = response.content
-                    # 단어 단위로 토큰 스트리밍 시뮬레이션
-                    words = content.split(" ")
-                    for i, word in enumerate(words):
-                        yield {"type": "token", "content": word if i == 0 else " " + word}
+                    yield {"type": "token", "content": content}
                     yield {"type": "done", "answer": content}
                     return
 
@@ -95,8 +95,8 @@ class Agent:
 
             answer = "최대 스텝 수에 도달했습니다. 질문을 다시 표현해 주세요."
             yield {"type": "done", "answer": answer}
-        except Exception as e:
-            yield {"type": "error", "message": str(e)}
+        except Exception:
+            yield {"type": "error", "message": "에이전트 처리 중 오류가 발생했습니다."}
 
     def reset(self) -> None:
         """대화 이력을 초기화한다. 시스템 프롬프트는 유지된다."""

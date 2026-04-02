@@ -52,6 +52,14 @@ class RAGPipeline:
         ragas 평가 파이프라인(rag_eval/)과 호환되는 형식으로 반환한다.
         """
         context_docs = retrieve(self.retriever, query)
+        if not context_docs:
+            return {
+                "query": query,
+                "contexts": [],
+                "answer": "관련 문서를 찾지 못했습니다.",
+                "source_documents": [],
+            }
+
         context_text = "\n\n".join(doc.page_content for doc in context_docs)
 
         messages = [

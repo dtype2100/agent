@@ -1,5 +1,7 @@
 """선택적 API 키 검증."""
 
+import hmac
+
 from fastapi import HTTPException, Request, status
 
 from app.core.config import Settings, get_settings
@@ -11,7 +13,7 @@ def require_api_key_if_configured(request: Request, settings: Settings) -> None:
     if not expected:
         return
     got = request.headers.get("X-API-Key", "")
-    if got != expected:
+    if not hmac.compare_digest(got, expected):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않거나 누락된 API 키입니다.",

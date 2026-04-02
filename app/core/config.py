@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     system_prompt: str = "You are a helpful assistant."
     max_sessions: int = 1000
     session_ttl_seconds: int = 3600
+    # 보관할 최대 대화 턴 수 (HumanMessage 기준). 초과 시 오래된 턴부터 제거.
+    max_memory_turns: int = 20
 
     # ── HTTP / 보안 ─────────────────────────────────────────
     # 쉼표로 구분. 비어 있으면 CORS 미들웨어 비활성

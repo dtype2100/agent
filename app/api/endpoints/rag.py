@@ -49,17 +49,15 @@ async def query_stream(body: QueryRequest, pipeline: PipelineDep):
     async def generate():
         try:
             result = await asyncio.to_thread(pipeline.ask, body.query)
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+        except Exception:
+            logger.exception("RAG stream query failed")
+            yield f"data: {json.dumps({'type': 'error', 'message': '검색 또는 LLM 호출에 실패했습니다.'}, ensure_ascii=False)}\n\n"
             return
 
         for i, ctx in enumerate(result["contexts"]):
             yield f"data: {json.dumps({'type': 'context', 'index': i, 'content': ctx}, ensure_ascii=False)}\n\n"
 
-        words = result["answer"].split(" ")
-        for i, word in enumerate(words):
-            token = word if i == 0 else " " + word
-            yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'type': 'token', 'content': result['answer']}, ensure_ascii=False)}\n\n"
 
         yield f"data: {json.dumps({'type': 'done', 'answer': result['answer'], 'contexts': result['contexts']}, ensure_ascii=False)}\n\n"
 
